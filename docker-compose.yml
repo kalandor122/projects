@@ -54,7 +54,7 @@ services:
     depends_on:
       - server
     ports:
-      - "8080:80"
+      - "8084:80"
     restart: always
 
 volumes:
