@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #0052cc;
+  --primary-hover: #0747a6;
+  --bg-gray: #f4f5f7;
+  --text-main: #172b4d;
+  --text-gray: #5e6c84;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-gray);
+  color: var(--text-main);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-100 text-gray-900;
+  }
+}
+
+/* Custom scrollbar for Kanban board */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}

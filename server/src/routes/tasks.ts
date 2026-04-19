@@ -1,0 +1,122 @@
+import express from 'express';
+import pool from '../db';
+import { announceEntity, updateEntityState, deleteEntity } from '../services/mqtt';
+
+const router = express.Router();
+
+// Get all tasks
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT t.*, COALESCE(json_agg(tag.*) FILTER (WHERE tag.id IS NOT NULL), '[]') as tags
+      FROM tasks t
+      LEFT JOIN task_tags tt ON t.id = tt.task_id
+      LEFT JOIN tags tag ON tt.tag_id = tag.id
+      GROUP BY t.id
+      ORDER BY t.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Get tasks for a project
+router.get('/project/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const result = await pool.query(`
+      SELECT t.*, COALESCE(json_agg(tag.*) FILTER (WHERE tag.id IS NOT NULL), '[]') as tags
+      FROM tasks t
+      LEFT JOIN task_tags tt ON t.id = tt.task_id
+      LEFT JOIN tags tag ON tt.tag_id = tag.id
+      WHERE t.project_id = $1
+      GROUP BY t.id
+      ORDER BY t.created_at DESC
+    `, [projectId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Create task
+router.post('/', async (req, res) => {
+  try {
+    const { project_id, name, description, deadline, status, priority } = req.body;
+    const result = await pool.query(
+      'INSERT INTO tasks (project_id, name, description, deadline, status, priority) VALUES ($1, $2, $3, $4, COALESCE($5, \'TODO\'), COALESCE($6, 3)) RETURNING *',
+      [project_id, name, description, deadline, status, priority]
+    );
+    const task = result.rows[0];
+    
+    announceEntity('task', task.id, task.name);
+    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id, priority: task.priority });
+    
+    res.status(201).json(task);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Update task
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, deadline, status, priority } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE tasks SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status), priority = COALESCE($5, priority) WHERE id = $6 RETURNING *',
+      [name, description, deadline, status, priority, id]
+    );
+    
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+    const task = result.rows[0];
+    
+    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id: task.project_id, priority: task.priority });
+    
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Delete task
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+    
+    deleteEntity('task', id);
+    res.json({ message: 'Task deleted' });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Assign tag to task
+router.post('/:id/tags', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tag_id } = req.body;
+    await pool.query('INSERT INTO task_tags (task_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, tag_id]);
+    res.json({ message: 'Tag assigned' });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Unassign tag from task
+router.delete('/:id/tags/:tagId', async (req, res) => {
+  try {
+    const { id, tagId } = req.params;
+    await pool.query('DELETE FROM task_tags WHERE task_id = $1 AND tag_id = $2', [id, tagId]);
+    res.json({ message: 'Tag unassigned' });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+export default router;
