@@ -1,46 +1,66 @@
-# Project Management Software
+# Project Management System (Self-Hosted)
 
-A Jira-style project management tool with TypeScript, PostgreSQL, and Home Assistant MQTT integration.
+A high-performance, containerized project management tool with a React frontend, Node.js backend, and deep Home Assistant integration via MQTT.
 
-## Features
-- **Project-specific Pages:** Each project has its own dedicated page.
-- **Kanban Board:** Per-project boards with TODO, IN_PROGRESS, and DONE columns.
-- **Tagging System:** Create global tags and assign them to projects or tasks.
-- **Deadlines:** Set and track deadlines for projects and tasks.
-- **Home Assistant Integration:** Automatic MQTT discovery and state announcements.
+## 🚀 Quick Start (Docker)
 
-## Setup
+The fastest way to deploy the entire stack (Frontend, Backend, Database, and MQTT Broker) is using Docker Compose.
 
-### Prerequisites
-- Node.js (v18+)
-- Docker & Docker Compose (for Postgres and MQTT Broker)
+1.  **Clone the repository**
+2.  **Configure Environment:**
+    Copy the variables below into a `.env` file in the root directory:
+    ```env
+    # Database
+    POSTGRES_USER=user
+    POSTGRES_PASSWORD=password
+    POSTGRES_DB=task_project
 
-### 1. Infrastructure
-Start the database and MQTT broker:
-```bash
-docker-compose up -d
-```
+    # MQTT (Defaults for internal container)
+    MQTT_URL=mqtt://mqtt:1883
+    MQTT_USERNAME=admin
+    MQTT_PASSWORD=password
+    ```
+3.  **Launch:**
+    ```bash
+    docker-compose up -d --build
+    ```
 
-### 2. Backend
-```bash
-cd server
-npm install
-# Create .env file with your DB/MQTT credentials if different from defaults
-npm run dev
-```
+The application will be live at:
+- **Frontend:** [http://localhost:8080](http://localhost:8080)
+- **API:** [http://localhost:3001](http://localhost:3001)
 
-### 3. Frontend
-```bash
-cd client
-npm install
-npm run dev
-```
+## ✨ Features
+- **Kanban Flow:** Manage tasks with a drag-and-drop Kanban interface.
+- **Project Detail Views:** Dedicated views for complex project tracking.
+- **Smart Timeline:** Visualize your project roadmap with an automated Gantt-style timeline.
+- **Global Tagging:** Categorize projects and tasks with custom colors and labels.
+- **Worklogs:** Exportable technical documentation and logs per project.
+- **Home Assistant Integration:** Real-time state syncing and MQTT Discovery.
 
-The application will be available at `http://localhost:5173`.
+## 🏠 Homelab Deployment
+### Cloudflare Tunnels / Reverse Proxy
+Point your tunnel or proxy to `http://localhost:8080`. The system is configured to handle routing and API proxying internally through Nginx.
 
-## MQTT & Home Assistant
-The system automatically announces new projects and tasks to Home Assistant using MQTT Discovery.
-- **Discovery Topic:** `homeassistant/sensor/project_mgmt_{type}_{id}/config`
-- **State Topic:** `project_mgmt/{type}/{id}/state`
+### Data Persistence
+Data is stored in the following Docker volumes:
+- `postgres_data`: All projects, tasks, and tags.
+- `mosquitto_data`: MQTT broker state and persistence.
 
-When a project or task status changes, it is immediately updated in Home Assistant.
+## 🛠 Architecture
+The system follows a modern microservices-inspired architecture:
+- **Client:** React (TypeScript) + Tailwind v4 + Vite. Served via Nginx.
+- **Server:** Node.js (Express) + PostgreSQL.
+- **Database:** PostgreSQL 15.
+- **Broker:** Eclipse Mosquitto (configured for internal container communication).
+
+### Architectural Map
+An interactive map of the system architecture can be generated via `graphify` and viewed in `graphify-out/graph.html`.
+
+## 🤖 Home Assistant Integration
+The system automatically registers projects and tasks as sensors in Home Assistant using **MQTT Discovery**.
+- **Sensors:** Appear automatically as `sensor.project_mgmt_...`
+- **Device:** All entities are grouped under the "Project Management System" device.
+- **Sync:** The server performs a full state sync to MQTT every time it starts.
+
+---
+Created by Füvesi Magor
