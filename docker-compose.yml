@@ -19,13 +19,14 @@ services:
       retries: 5
 
   mqtt:
-    image: eclipse-mosquitto:latest
+    build:
+      context: .
+      dockerfile: mqtt.Dockerfile
     container_name: task_project_mqtt
     ports:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
 
