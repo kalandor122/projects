@@ -65,7 +65,8 @@ export default function TimelineView() {
         fetch('/api/projects'),
         fetch('/api/tasks')
       ]);
-      setProjects(await projRes.json());
+      const allProjects: Project[] = await projRes.json();
+      setProjects(allProjects.filter(p => p.status !== 'Completed'));
       setTasks(await tasksRes.json());
     } catch (err) {
       console.error('Failed to fetch timeline data', err);
