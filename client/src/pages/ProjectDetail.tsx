@@ -511,6 +511,10 @@ export default function ProjectDetail() {
       : tasks.filter(task => selectedFilterTags.every(ft => task.tags.some(tt => tt.id === ft)));
     
     return [...result].sort((a, b) => {
+      // Put DONE tasks at the bottom
+      if (a.status === 'DONE' && b.status !== 'DONE') return 1;
+      if (a.status !== 'DONE' && b.status === 'DONE') return -1;
+
       if (a.priority !== b.priority) return a.priority - b.priority;
       return new Date(b.deadline || 0).getTime() - new Date(a.deadline || 0).getTime();
     });
