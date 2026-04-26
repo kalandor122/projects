@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Plus, Calendar, Clock, Filter, Tag as TagIcon, X, MoreVertical, Edit2, Trash2, CheckCircle, List, Layout as KanbanIcon, AlertCircle, FileText, Download, BookOpen } from 'lucide-react';
-import { format } from 'date-fns';
+import { ChevronLeft, Plus, Calendar as CalendarIcon, Clock, Filter, Tag as TagIcon, X, MoreVertical, Edit2, Trash2, CheckCircle, List, Layout as KanbanIcon, AlertCircle, FileText, Download, BookOpen, ChevronRight } from 'lucide-react';
+import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setHours, setMinutes, parse } from 'date-fns';
 import {
   DndContext,
   closestCorners,
@@ -14,7 +14,6 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
-  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -65,6 +64,176 @@ const PRIORITY_MAP: Record<number, { label: string, color: string, bg: string }>
   3: { label: 'Medium', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
   4: { label: 'Low', color: 'text-gray-600', bg: 'bg-gray-50 border-gray-100' }
 };
+
+function DateTimePicker({ value, onChange }: { value: Date, onChange: (date: Date) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date(value));
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+  const monthStart = startOfMonth(viewDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart);
+  const endDate = endOfWeek(monthEnd);
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const hours = format(value, 'hh');
+  const minutes = format(value, 'mm');
+  const ampm = format(value, 'a');
+
+  const updateTime = (h: string, m: string, p: string) => {
+    let hour = parseInt(h);
+    if (p === 'PM' && hour < 12) hour += 12;
+    if (p === 'AM' && hour === 12) hour = 0;
+    const newDate = setMinutes(setHours(new Date(value), hour), parseInt(m));
+    onChange(newDate);
+  };
+
+  const presets = [
+    { label: 'Tomorrow', date: addDays(new Date(), 1) },
+    { label: 'This week', date: endOfWeek(new Date()) },
+    { label: 'Next week', date: addDays(endOfWeek(new Date()), 1) },
+    { label: 'This month', date: endOfMonth(new Date()) },
+    { label: 'Next month', date: addDays(endOfMonth(new Date()), 1) },
+  ];
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-[#d1e2df] rounded-lg cursor-pointer hover:border-[#000000] transition-colors shadow-sm"
+      >
+        <span className="text-[#000000] font-medium">
+          {format(value, 'MMMM d, yyyy HH:mm')}
+        </span>
+        <CalendarIcon size={18} className="text-[#000000]" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-2 w-[400px] bg-white rounded-xl shadow-2xl border border-[#d1e2df] z-[100] animate-fadeIn overflow-hidden">
+          <div className="absolute top-0 right-6 -translate-y-full w-4 h-4 overflow-hidden">
+            <div className="w-4 h-4 bg-white border-t border-l border-[#d1e2df] rotate-45 translate-y-2"></div>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-sm font-bold text-gray-800">Date</span>
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={() => setViewDate(subMonths(viewDate, 1))} className="text-[#000000] hover:text-[#8ab1ab]"><ChevronLeft size={20}/></button>
+                <span className="text-sm font-bold text-gray-800 min-w-[100px] text-center">{format(viewDate, 'MMMM yyyy')}</span>
+                <button type="button" onClick={() => setViewDate(addMonths(viewDate, 1))} className="text-[#000000] hover:text-[#8ab1ab]"><ChevronRight size={20}/></button>
+              </div>
+            </div>
+
+            <div className="flex gap-6">
+              <div className="w-32 flex flex-col gap-1 border-r border-gray-50 pr-4">
+                <span className="text-[10px] font-bold text-[#000000] uppercase tracking-wider mb-2">Presets</span>
+                {presets.map(p => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      const newDate = new Date(p.date);
+                      newDate.setHours(value.getHours(), value.getMinutes());
+                      onChange(newDate);
+                      setViewDate(newDate);
+                    }}
+                    className="text-left py-1.5 text-xs font-bold text-gray-600 hover:text-[#000000] transition-colors"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1">
+                <div className="grid grid-cols-7 mb-2">
+                  {days.map(d => (
+                    <span key={d} className="text-[10px] font-bold text-[#000000] text-center">{d}</span>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-y-1">
+                  {calendarDays.map((day, i) => {
+                    const isSelected = isSameDay(day, value);
+                    const isCurrentMonth = isSameMonth(day, monthStart);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          const newDate = new Date(day);
+                          newDate.setHours(value.getHours(), value.getMinutes());
+                          onChange(newDate);
+                        }}
+                        className={`
+                          h-8 w-8 flex items-center justify-center rounded-full text-xs font-bold transition-all
+                          ${isSelected ? 'bg-blue-700 text-white shadow-md' : 'hover:bg-gray-50'}
+                          ${!isCurrentMonth ? 'text-gray-200' : isSelected ? 'text-white' : 'text-gray-600'}
+                        `}
+                      >
+                        {format(day, 'd')}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-800">Time</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={hours}
+                    onChange={(e) => updateTime(e.target.value.padStart(2, '0'), minutes, ampm)}
+                    className="w-12 h-9 text-center border border-gray-100 rounded-lg text-sm font-bold text-gray-600 focus:outline-none focus:border-[#000000]"
+                  />
+                  <span className="text-gray-300 font-bold">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={minutes}
+                    onChange={(e) => updateTime(hours, e.target.value.padStart(2, '0'), ampm)}
+                    className="w-12 h-9 text-center border border-gray-100 rounded-lg text-sm font-bold text-gray-600 focus:outline-none focus:border-[#000000]"
+                  />
+                </div>
+                <div className="flex bg-gray-50 p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => updateTime(hours, minutes, 'AM')}
+                    className={`px-3 py-1 rounded text-[10px] font-black transition-all ${ampm === 'AM' ? 'bg-[#000000] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTime(hours, minutes, 'PM')}
+                    className={`px-3 py-1 rounded text-[10px] font-black transition-all ${ampm === 'PM' ? 'bg-[#000000] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    PM
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TaskCard({ 
   task, 
@@ -211,7 +380,7 @@ export default function ProjectDetail() {
   });
 
   const [worklogForm, setWorklogForm] = useState({
-    date: format(new Date(), 'yyyy-MM-dd'),
+    date: new Date(),
     title: '',
     description: ''
   });
@@ -335,13 +504,12 @@ export default function ProjectDetail() {
     }
   };
 
-  // Worklog handlers
   const handleOpenWorklogModal = (log?: Worklog) => {
     if (log) {
       setIsEditing(true);
       setEditingWorklogId(log.id);
       setWorklogForm({
-        date: log.date.split('T')[0],
+        date: new Date(log.date),
         title: log.title,
         description: log.description || ''
       });
@@ -349,7 +517,7 @@ export default function ProjectDetail() {
       setIsEditing(false);
       setEditingWorklogId(null);
       setWorklogForm({
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: new Date(),
         title: '',
         description: ''
       });
@@ -365,7 +533,11 @@ export default function ProjectDetail() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...worklogForm, project_id: id })
+        body: JSON.stringify({ 
+          ...worklogForm, 
+          date: worklogForm.date.toISOString(),
+          project_id: id 
+        })
       });
       if (res.ok) {
         setShowWorklogModal(false);
@@ -396,7 +568,7 @@ export default function ProjectDetail() {
     content += `---\n\n`;
 
     sortedLogs.forEach(log => {
-      content += `## ${format(new Date(log.date), 'MMMM d, yyyy')} - ${log.title}\n`;
+      content += `## ${format(new Date(log.date), 'MMMM d, yyyy HH:mm')} - ${log.title}\n`;
       if (log.description) {
         content += `${log.description}\n\n`;
       }
@@ -511,10 +683,8 @@ export default function ProjectDetail() {
       : tasks.filter(task => selectedFilterTags.every(ft => task.tags.some(tt => tt.id === ft)));
     
     return [...result].sort((a, b) => {
-      // Put DONE tasks at the bottom
       if (a.status === 'DONE' && b.status !== 'DONE') return 1;
       if (a.status !== 'DONE' && b.status === 'DONE') return -1;
-
       if (a.priority !== b.priority) return a.priority - b.priority;
       return new Date(b.deadline || 0).getTime() - new Date(a.deadline || 0).getTime();
     });
@@ -763,8 +933,8 @@ export default function ProjectDetail() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-3 text-sm font-bold text-blue-600 mb-1">
-                        <Calendar size={16} />
-                        {format(new Date(log.date), 'MMMM d, yyyy')}
+                        <CalendarIcon size={16} />
+                        {format(new Date(log.date), 'MMMM d, yyyy HH:mm')}
                       </div>
                       <h3 className="text-lg font-black text-gray-900">{log.title}</h3>
                     </div>
@@ -790,7 +960,7 @@ export default function ProjectDetail() {
         )}
       </div>
 
-      {/* Task Creation/Edit Modal */}
+      {/* Task Modal - Unchanged */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -856,7 +1026,7 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* Worklog Modal */}
+      {/* Worklog Modal with Custom DateTimePicker */}
       {showWorklogModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -866,8 +1036,11 @@ export default function ProjectDetail() {
               </div>
               <form onSubmit={handleSaveWorklog} className="p-6 space-y-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Date</label>
-                  <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={worklogForm.date} onChange={e => setWorklogForm({...worklogForm, date: e.target.value})} required />
+                  <label className="text-sm font-semibold text-gray-700">Date & Time</label>
+                  <DateTimePicker 
+                    value={worklogForm.date} 
+                    onChange={date => setWorklogForm({...worklogForm, date})} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Title</label>

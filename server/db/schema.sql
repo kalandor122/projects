@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS task_tags (
 CREATE TABLE IF NOT EXISTS worklogs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
+    date TIMESTAMP WITH TIME ZONE NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
