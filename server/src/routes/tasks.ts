@@ -119,4 +119,57 @@ router.delete('/:id/tags/:tagId', async (req, res) => {
   }
 });
 
+// Get subtasks for a task
+router.get('/:id/subtasks', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM subtasks WHERE task_id = $1 ORDER BY created_at ASC', [id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Create subtask
+router.post('/:id/subtasks', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    const result = await pool.query(
+      'INSERT INTO subtasks (task_id, name) VALUES ($1, $2) RETURNING *',
+      [id, name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Toggle subtask
+router.patch('/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { subtaskId } = req.params;
+    const { completed } = req.body;
+    const result = await pool.query(
+      'UPDATE subtasks SET completed = $1 WHERE id = $2 RETURNING *',
+      [completed, subtaskId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Subtask not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Delete subtask
+router.delete('/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { subtaskId } = req.params;
+    await pool.query('DELETE FROM subtasks WHERE id = $1', [subtaskId]);
+    res.json({ message: 'Subtask deleted' });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 export default router;

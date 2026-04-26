@@ -247,7 +247,53 @@ function TaskCard({
   onEdit?: (task: Task) => void
 }) {
   const [showMenu, setShowMenu] = useState(false);
+interface Subtask {
+  id: string;
+  task_id: string;
+  name: string;
+  completed: boolean;
+}
+
+// ... inside TaskCard ...
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [newSubtask, setNewSubtask] = useState('');
+
+  useEffect(() => {
+    fetch(`/api/tasks/${task.id}/subtasks`)
+      .then(res => res.json())
+      .then(setSubtasks);
+  }, [task.id]);
+
+  const toggleSubtask = async (sub: Subtask) => {
+    const updated = !sub.completed;
+    setSubtasks(prev => prev.map(s => s.id === sub.id ? { ...s, completed: updated } : s));
+    await fetch(`/api/tasks/subtasks/${sub.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: updated })
+    });
+  };
+
+  const addSubtask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubtask.trim()) return;
+    const res = await fetch(`/api/tasks/${task.id}/subtasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newSubtask })
+    });
+    const sub = await res.json();
+    setSubtasks(prev => [...prev, sub]);
+    setNewSubtask('');
+  };
+
+  const deleteSubtask = async (id: string) => {
+    await fetch(`/api/tasks/subtasks/${id}`, { method: 'DELETE' });
+    setSubtasks(prev => prev.filter(s => s.id !== id));
+  };
+
   const p = PRIORITY_MAP[task.priority] || PRIORITY_MAP[3];
+  const completedCount = subtasks.filter(s => s.completed).length;
 
   return (
     <div className={`
@@ -265,6 +311,11 @@ function TaskCard({
           <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 pr-6">
             {task.name}
           </h4>
+          {subtasks.length > 0 && (
+            <div className="text-[10px] font-bold text-gray-400 mt-1">
+              {completedCount}/{subtasks.length} subtasks done
+            </div>
+          )}
         </div>
         <div className="relative">
           <button 
@@ -278,7 +329,25 @@ function TaskCard({
           </button>
           
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-1 animate-fadeIn overflow-hidden">
+            <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-2 animate-fadeIn overflow-hidden">
+              <div className="px-3 pb-2 border-b border-gray-100 mb-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Subtasks</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto mb-3">
+                    {subtasks.map(s => (
+                        <div key={s.id} className="flex items-center justify-between group/subtask hover:bg-gray-50 p-1 rounded transition-colors">
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                                <input type="checkbox" checked={s.completed} onChange={() => toggleSubtask(s)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shrink-0" />
+                                <span className={`text-xs truncate ${s.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{s.name}</span>
+                            </label>
+                            <button onClick={() => deleteSubtask(s.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover/subtask:opacity-100 px-1"><X size={12}/></button>
+                        </div>
+                    ))}
+                </div>
+                <form onSubmit={addSubtask} className="flex gap-2 items-center">
+                    <input type="text" value={newSubtask} onChange={e => setNewSubtask(e.target.value)} placeholder="Add subtask..." className="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+                    <button type="submit" className="text-blue-600 font-bold text-xs hover:text-blue-700 transition-colors shrink-0">Add</button>
+                </form>
+              </div>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
