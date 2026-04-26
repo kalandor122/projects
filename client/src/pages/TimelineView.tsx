@@ -138,7 +138,7 @@ export default function TimelineView() {
 
       <div 
         ref={scrollContainerRef}
-        className="flex-1 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 overflow-auto relative custom-scrollbar select-none touch-pan-x"
+        className="flex-1 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 overflow-auto relative custom-scrollbar touch-auto overscroll-contain"
       >
         <div style={{ width: totalWidth }} className="relative min-h-full flex flex-col">
           
