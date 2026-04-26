@@ -329,7 +329,12 @@ interface Subtask {
           </button>
           
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-2 animate-fadeIn overflow-hidden">
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-2 animate-fadeIn overflow-hidden cursor-default"
+            >
               <div className="px-3 pb-2 border-b border-gray-100 mb-2">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Subtasks</p>
                 <div className="space-y-1 max-h-32 overflow-y-auto mb-3">
