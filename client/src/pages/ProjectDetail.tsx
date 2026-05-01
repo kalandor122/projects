@@ -36,6 +36,7 @@ interface Task {
   description: string;
   deadline: string;
   status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+  ease_level: 'Easy' | 'Medium' | 'Hard';
   priority: number; // 1: Urgent, 2: High, 3: Medium, 4: Low
   tags: Tag[];
 }
@@ -63,6 +64,12 @@ const PRIORITY_MAP: Record<number, { label: string, color: string, bg: string }>
   2: { label: 'High', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-100' },
   3: { label: 'Medium', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
   4: { label: 'Low', color: 'text-gray-600', bg: 'bg-gray-50 border-gray-100' }
+};
+
+const EASE_MAP: Record<string, { color: string, bg: string }> = {
+  'Easy': { color: 'text-green-600', bg: 'bg-green-50 border-green-100' },
+  'Medium': { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-100' },
+  'Hard': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-100' }
 };
 
 function DateTimePicker({ value, onChange }: { value: Date, onChange: (date: Date) => void }) {
@@ -304,9 +311,14 @@ interface Subtask {
     `}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <div className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border mb-1.5 ${p.color} ${p.bg}`}>
-            <AlertCircle size={10} />
-            {p.label}
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${p.color} ${p.bg}`}>
+                <AlertCircle size={10} />
+                {p.label}
+            </div>
+            <div className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${EASE_MAP[task.ease_level || 'Medium']?.color || 'text-gray-600'} ${EASE_MAP[task.ease_level || 'Medium']?.bg || 'bg-gray-50'}`}>
+                {task.ease_level || 'Medium'}
+            </div>
           </div>
           <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 pr-6">
             {task.name}
@@ -449,6 +461,7 @@ export default function ProjectDetail() {
     description: '',
     deadline: '',
     status: 'TODO' as 'TODO' | 'IN_PROGRESS' | 'DONE',
+    ease_level: 'Medium' as 'Easy' | 'Medium' | 'Hard',
     priority: 3,
     tagIds: [] as string[]
   });
@@ -507,6 +520,7 @@ export default function ProjectDetail() {
       description: '',
       deadline: '',
       status: status,
+      ease_level: 'Medium',
       priority: 3,
       tagIds: []
     });
@@ -521,6 +535,7 @@ export default function ProjectDetail() {
       description: task.description || '',
       deadline: task.deadline ? task.deadline.split('T')[0] : '',
       status: task.status,
+      ease_level: task.ease_level,
       priority: task.priority,
       tagIds: task.tags.map(t => t.id)
     });
@@ -916,6 +931,7 @@ export default function ProjectDetail() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Priority</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Ease</th>
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Task Name</th>
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Status</th>
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Deadline</th>
@@ -926,6 +942,8 @@ export default function ProjectDetail() {
               <tbody className="divide-y divide-gray-100">
                 {filteredTasks.map(task => {
                   const p = PRIORITY_MAP[task.priority] || PRIORITY_MAP[3];
+                  const ease = task.ease_level || 'Medium';
+                  const e = EASE_MAP[ease] || EASE_MAP['Medium'];
                   return (
                     <tr key={task.id} className="hover:bg-gray-50/50 transition-colors group">
                       <td className="px-6 py-4">
@@ -935,8 +953,9 @@ export default function ProjectDetail() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900">{task.name}</div>
-                        <div className="text-xs text-gray-500 truncate max-w-xs">{task.description}</div>
+                        <div className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold ${e.color} ${e.bg}`}>
+                          {ease}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${
@@ -1072,6 +1091,14 @@ export default function ProjectDetail() {
                       <option value="TODO">To Do</option>
                       <option value="IN_PROGRESS">In Progress</option>
                       <option value="DONE">Done</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Ease Level</label>
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={taskForm.ease_level} onChange={e => setTaskForm({...taskForm, ease_level: e.target.value as any})}>
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
                     </select>
                   </div>
                 </div>

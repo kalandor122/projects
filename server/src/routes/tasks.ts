@@ -43,15 +43,15 @@ router.get('/project/:projectId', async (req, res) => {
 // Create task
 router.post('/', async (req, res) => {
   try {
-    const { project_id, name, description, deadline, status, priority } = req.body;
+    const { project_id, name, description, deadline, status, ease_level, priority } = req.body;
     const result = await pool.query(
-      'INSERT INTO tasks (project_id, name, description, deadline, status, priority) VALUES ($1, $2, $3, $4, COALESCE($5, \'TODO\'), COALESCE($6, 3)) RETURNING *',
-      [project_id, name, description, deadline, status, priority]
+      'INSERT INTO tasks (project_id, name, description, deadline, status, ease_level, priority) VALUES ($1, $2, $3, $4, COALESCE($5, \'TODO\'), COALESCE($6, \'Medium\'), COALESCE($7, 3)) RETURNING *',
+      [project_id, name, description, deadline, status, ease_level, priority]
     );
     const task = result.rows[0];
     
     announceEntity('task', task.id, task.name);
-    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id, priority: task.priority });
+    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id, ease_level, priority: task.priority });
     
     res.status(201).json(task);
   } catch (err) {
@@ -63,17 +63,17 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, deadline, status, priority } = req.body;
+    const { name, description, deadline, status, ease_level, priority } = req.body;
     
     const result = await pool.query(
-      'UPDATE tasks SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status), priority = COALESCE($5, priority) WHERE id = $6 RETURNING *',
-      [name, description, deadline, status, priority, id]
+      'UPDATE tasks SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status), ease_level = COALESCE($5, ease_level), priority = COALESCE($6, priority) WHERE id = $7 RETURNING *',
+      [name, description, deadline, status, ease_level, priority, id]
     );
     
     if (result.rows.length === 0) return res.status(404).json({ error: 'Task not found' });
     const task = result.rows[0];
     
-    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id: task.project_id, priority: task.priority });
+    updateEntityState('task', task.id, task.name, task.status, { deadline, project_id: task.project_id, ease_level: task.ease_level, priority: task.priority });
     
     res.json(task);
   } catch (err) {

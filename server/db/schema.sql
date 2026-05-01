@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description TEXT,
     deadline TIMESTAMP WITH TIME ZONE,
     status VARCHAR(50) NOT NULL DEFAULT 'TODO', -- TODO, IN_PROGRESS, DONE
+    ease_level VARCHAR(50) NOT NULL DEFAULT 'Medium', -- Easy, Medium, Hard
     priority INTEGER NOT NULL DEFAULT 3, -- 1: Urgent, 2: High, 3: Medium, 4: Low
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
