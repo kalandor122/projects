@@ -26,7 +26,7 @@ The fastest way to deploy the entire stack (Frontend, Backend, Database, and MQT
     ```
 
 The application will be live at:
-- **Frontend:** [http://localhost:8080](http://localhost:8080)
+- **Frontend:** [http://localhost:8084](http://localhost:8084)
 - **API:** [http://localhost:3001](http://localhost:3001)
 
 ## ✨ Features
@@ -39,7 +39,7 @@ The application will be live at:
 
 ## 🏠 Homelab Deployment
 ### Cloudflare Tunnels / Reverse Proxy
-Point your tunnel or proxy to `http://localhost:8080`. The system is configured to handle routing and API proxying internally through Nginx.
+Point your tunnel or proxy to `http://localhost:8084`. The system is configured to handle routing and API proxying internally through Nginx.
 
 ### Data Persistence
 Data is stored in the following Docker volumes:
