@@ -41,6 +41,17 @@ const initDB = async () => {
       $$;
     `);
 
+    // Migration: Add ease_level column if it doesn't exist
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='ease_level') THEN
+          ALTER TABLE tasks ADD COLUMN ease_level VARCHAR(50) NOT NULL DEFAULT 'Medium';
+        END IF;
+      END
+      $$;
+    `);
+
     // Migration: Create worklogs table if it doesn't exist (handled by schema.sql but double check for existing instances)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS worklogs (
