@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Calendar, ArrowRight, Folder } from 'lucide-react';
+import { Plus, Calendar, ArrowRight, Folder, Filter, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Tag {
@@ -22,6 +22,7 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(true);
   
   const [newProject, setNewProject] = useState({
     name: '',
@@ -44,6 +45,10 @@ export default function ProjectList() {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => showCompleted || p.status !== 'Completed');
+  }, [projects, showCompleted]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,17 +82,30 @@ export default function ProjectList() {
             <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
             <p className="text-gray-500 mt-1">Manage and track your active projects.</p>
           </div>
-          <button 
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all font-medium"
-            onClick={() => setShowModal(true)}
-          >
-            <Plus size={20} />
-            <span>New Project</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowCompleted(!showCompleted)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-all ${
+                showCompleted 
+                  ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 shadow-sm'
+              }`}
+            >
+              {showCompleted ? <CheckCircle size={18} /> : <Filter size={18} />}
+              <span>{showCompleted ? 'Showing All' : 'Active Only'}</span>
+            </button>
+            <button 
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all font-medium"
+              onClick={() => setShowModal(true)}
+            >
+              <Plus size={20} />
+              <span>New Project</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <Link to={`/project/${project.id}`} key={project.id} className="group">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full flex flex-col hover:shadow-lg transition-all border-l-4 border-l-blue-500 transform">
                 <div className="flex justify-between items-start mb-4">
