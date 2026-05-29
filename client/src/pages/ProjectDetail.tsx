@@ -455,6 +455,8 @@ export default function ProjectDetail() {
 
   const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [sortColumn, setSortColumn] = useState<'priority' | 'ease' | 'name' | 'status' | 'deadline' | 'tags' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
   const [taskForm, setTaskForm] = useState({
     name: '',
@@ -766,6 +768,18 @@ export default function ProjectDetail() {
     }
   };
 
+  const EASE_ORDER: Record<string, number> = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+  const STATUS_ORDER: Record<string, number> = { 'TODO': 1, 'IN_PROGRESS': 2, 'DONE': 3 };
+
+  const handleSort = (column: 'priority' | 'ease' | 'name' | 'status' | 'deadline' | 'tags') => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const filteredTasks = useMemo(() => {
     let result = selectedFilterTags.length === 0 
       ? tasks 
@@ -778,6 +792,29 @@ export default function ProjectDetail() {
       return new Date(b.deadline || 0).getTime() - new Date(a.deadline || 0).getTime();
     });
   }, [tasks, selectedFilterTags]);
+
+  const sortedTasks = useMemo(() => {
+    if (!sortColumn) return filteredTasks;
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    return [...filteredTasks].sort((a, b) => {
+      switch (sortColumn) {
+        case 'priority':
+          return (a.priority - b.priority) * dir;
+        case 'ease':
+          return ((EASE_ORDER[a.ease_level] || 2) - (EASE_ORDER[b.ease_level] || 2)) * dir;
+        case 'name':
+          return a.name.localeCompare(b.name) * dir;
+        case 'status':
+          return ((STATUS_ORDER[a.status] || 1) - (STATUS_ORDER[b.status] || 1)) * dir;
+        case 'deadline':
+          return (new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime()) * dir;
+        case 'tags':
+          return (a.tags.length - b.tags.length) * dir;
+        default:
+          return 0;
+      }
+    });
+  }, [filteredTasks, sortColumn, sortDirection]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -930,17 +967,32 @@ export default function ProjectDetail() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Priority</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Ease</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Task Name</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Status</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Deadline</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Tags</th>
+                  {([
+                    { key: 'priority', label: 'Priority' },
+                    { key: 'ease', label: 'Ease' },
+                    { key: 'name', label: 'Task Name' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'deadline', label: 'Deadline' },
+                    { key: 'tags', label: 'Tags' },
+                  ] as const).map(col => (
+                    <th
+                      key={col.key}
+                      onClick={() => handleSort(col.key)}
+                      className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400 cursor-pointer select-none hover:text-gray-600 transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {sortColumn === col.key && (
+                          <span className="text-blue-500">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                        )}
+                      </span>
+                    </th>
+                  ))}
                   <th className="px-6 py-4 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredTasks.map(task => {
+                {sortedTasks.map(task => {
                   const p = PRIORITY_MAP[task.priority] || PRIORITY_MAP[3];
                   const ease = task.ease_level || 'Medium';
                   const e = EASE_MAP[ease] || EASE_MAP['Medium'];
@@ -956,6 +1008,9 @@ export default function ProjectDetail() {
                         <div className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold ${e.color} ${e.bg}`}>
                           {ease}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        {task.name}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${
@@ -985,9 +1040,9 @@ export default function ProjectDetail() {
                     </tr>
                   );
                 })}
-                {filteredTasks.length === 0 && (
+                {sortedTasks.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold">No tasks found</td>
+                    <td colSpan={7} className="px-6 py-20 text-center text-gray-400 font-bold">No tasks found</td>
                   </tr>
                 )}
               </tbody>
