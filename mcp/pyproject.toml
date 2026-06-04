@@ -1,0 +1,19 @@
+[project]
+name = "task-manager-mcp"
+version = "0.1.0"
+description = "MCP server for the Task Project Manager API"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+task-manager-mcp = "task_manager_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

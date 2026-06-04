@@ -1,0 +1,2 @@
+[console_scripts]
+task-manager-mcp = task_manager_mcp.server:main

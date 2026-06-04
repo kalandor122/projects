@@ -1,0 +1,10 @@
+pyproject.toml
+src/task_manager_mcp/__init__.py
+src/task_manager_mcp/api_client.py
+src/task_manager_mcp/server.py
+src/task_manager_mcp.egg-info/PKG-INFO
+src/task_manager_mcp.egg-info/SOURCES.txt
+src/task_manager_mcp.egg-info/dependency_links.txt
+src/task_manager_mcp.egg-info/entry_points.txt
+src/task_manager_mcp.egg-info/requires.txt
+src/task_manager_mcp.egg-info/top_level.txt
