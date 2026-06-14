@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Calendar, ArrowRight, Folder, Filter, CheckCircle } from 'lucide-react';
+import { Plus, Calendar, ArrowRight, Filter, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import IconPicker, { ProjectIcon } from '../components/IconPicker';
 
 interface Tag {
   id: string;
@@ -15,6 +16,7 @@ interface Project {
   description: string;
   deadline: string;
   status: string;
+  icon?: string;
   tags: Tag[];
 }
 
@@ -22,12 +24,13 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
   
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
-    deadline: ''
+    deadline: '',
+    icon: 'folder'
   });
 
   const fetchProjects = async () => {
@@ -60,7 +63,7 @@ export default function ProjectList() {
       });
       if (res.ok) {
         setShowModal(false);
-        setNewProject({ name: '', description: '', deadline: '' });
+        setNewProject({ name: '', description: '', deadline: '', icon: 'folder' });
         fetchProjects();
       }
     } catch (err) {
@@ -110,7 +113,7 @@ export default function ProjectList() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full flex flex-col hover:shadow-lg transition-all border-l-4 border-l-blue-500 transform">
                 <div className="flex justify-between items-start mb-4">
                   <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                    <Folder size={20} />
+                    <ProjectIcon icon={project.icon} size={20} />
                   </div>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                     project.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
@@ -152,7 +155,7 @@ export default function ProjectList() {
           
           {projects.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300 text-gray-500">
-               <Folder size={48} className="mb-4 opacity-20" />
+               <ProjectIcon icon="folder" size={48} className="mb-4 opacity-20" />
                <p className="text-lg font-medium">No projects yet</p>
                <button 
                  className="text-blue-600 hover:underline mt-2"
@@ -186,6 +189,13 @@ export default function ProjectList() {
                   onChange={e => setNewProject({...newProject, name: e.target.value})}
                   required 
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Icon</label>
+                <div className="flex items-center gap-3">
+                  <IconPicker value={newProject.icon} onChange={icon => setNewProject({...newProject, icon})} />
+                  <span className="text-xs text-gray-400">{newProject.icon}</span>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Description</label>

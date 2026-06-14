@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS projects (
     description TEXT,
     deadline TIMESTAMP WITH TIME ZONE,
     status VARCHAR(50) NOT NULL DEFAULT 'Active',
+    icon VARCHAR(50) DEFAULT 'folder',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

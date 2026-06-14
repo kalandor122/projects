@@ -52,6 +52,17 @@ const initDB = async () => {
       $$;
     `);
 
+    // Migration: Add icon column to projects if it doesn't exist
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='icon') THEN
+          ALTER TABLE projects ADD COLUMN icon VARCHAR(50) DEFAULT 'folder';
+        END IF;
+      END
+      $$;
+    `);
+
     // Migration: Create worklogs table if it doesn't exist (handled by schema.sql but double check for existing instances)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS worklogs (

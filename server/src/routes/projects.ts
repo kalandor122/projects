@@ -44,10 +44,10 @@ router.get('/:id', async (req, res) => {
 // Create project
 router.post('/', async (req, res) => {
   try {
-    const { name, description, deadline } = req.body;
+    const { name, description, deadline, icon } = req.body;
     const result = await pool.query(
-      'INSERT INTO projects (name, description, deadline) VALUES ($1, $2, $3) RETURNING *',
-      [name, description, deadline]
+      'INSERT INTO projects (name, description, deadline, icon) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, description, deadline, icon || 'folder']
     );
     const project = result.rows[0];
     
@@ -64,11 +64,11 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, deadline, status } = req.body;
+    const { name, description, deadline, status, icon } = req.body;
     
     const result = await pool.query(
-      'UPDATE projects SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status) WHERE id = $5 RETURNING *',
-      [name, description, deadline, status, id]
+      'UPDATE projects SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status), icon = COALESCE($5, icon) WHERE id = $6 RETURNING *',
+      [name, description, deadline, status, icon, id]
     );
     
     if (result.rows.length === 0) return res.status(404).json({ error: 'Project not found' });

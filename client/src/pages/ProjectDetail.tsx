@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Calendar as CalendarIcon, Clock, Filter, Tag as TagIcon, X, MoreVertical, Edit2, Trash2, CheckCircle, List, Layout as KanbanIcon, AlertCircle, FileText, Download, BookOpen, ChevronRight } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setHours, setMinutes, parse } from 'date-fns';
+import IconPicker from '../components/IconPicker';
 import {
   DndContext,
   closestCorners,
@@ -47,6 +48,7 @@ interface Project {
   description: string;
   deadline: string;
   status: string;
+  icon?: string;
   tags: Tag[];
 }
 
@@ -703,6 +705,19 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleUpdateIcon = async (icon: string) => {
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ icon })
+      });
+      if (res.ok) fetchData();
+    } catch (err) {
+      console.error('Failed to update project icon', err);
+    }
+  };
+
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
@@ -842,6 +857,7 @@ export default function ProjectDetail() {
                 </Link>
                 
                 <div className="flex items-center gap-4">
+                  <IconPicker value={project.icon || 'folder'} onChange={handleUpdateIcon} size={24} triggerClassName="!w-12 !h-12 !rounded-xl !border-blue-100 !bg-blue-50" />
                   <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{project.name}</h1>
                   <div className="flex items-center gap-2">
                     <button 
