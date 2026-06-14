@@ -15,20 +15,19 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:8084', 'http://localhost:5173'];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+// CORS: allow all by default, restrict via CORS_ORIGINS env var in production
+const corsOptions: cors.CorsOptions = { origin: true }; // reflect request origin
+if (process.env.CORS_ORIGINS) {
+  const allowedOrigins = process.env.CORS_ORIGINS.split(',').map((s: string) => s.trim());
+  corsOptions.origin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  },
-  credentials: true,
-}));
+  };
+}
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
