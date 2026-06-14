@@ -27,6 +27,7 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
 
@@ -42,8 +43,13 @@ services:
         condition: service_started
     env_file:
       - .env
+    environment:
+      PORT: "3001"
+      MQTT_URL: "mqtt://mqtt:1883"
+      MQTT_USERNAME: "${MQTT_USERNAME}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD}"
     ports:
-      - "${PORT}:${PORT}"
+      - "3001:3001"
     restart: always
 
   client:
@@ -59,6 +65,5 @@ services:
 
 volumes:
   postgres_data:
-  mosquitto_config:
   mosquitto_data:
   mosquitto_log:

@@ -15,6 +15,7 @@ export default function TagManager() {
   const fetchTags = async () => {
     try {
       const res = await fetch('/api/tags');
+      if (!res.ok) throw new Error('Failed to fetch tags');
       setTags(await res.json());
     } catch (err) {
       console.error('Failed to fetch tags', err);

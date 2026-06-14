@@ -24,7 +24,7 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   
   const [newProject, setNewProject] = useState({
     name: '',
@@ -36,6 +36,7 @@ export default function ProjectList() {
   const fetchProjects = async () => {
     try {
       const res = await fetch('/api/projects');
+      if (!res.ok) throw new Error('Failed to fetch projects');
       const data = await res.json();
       setProjects(data);
     } catch (err) {
@@ -50,8 +51,8 @@ export default function ProjectList() {
   }, []);
 
   const filteredProjects = useMemo(() => {
-    return projects.filter(p => showCompleted || p.status !== 'Completed');
-  }, [projects, showCompleted]);
+    return projects.filter(p => showAll || p.status !== 'Completed');
+  }, [projects, showAll]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,15 +88,15 @@ export default function ProjectList() {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => setShowCompleted(!showCompleted)}
+              onClick={() => setShowAll(!showAll)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-all ${
-                showCompleted 
+                showAll 
                   ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' 
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 shadow-sm'
               }`}
             >
-              {showCompleted ? <CheckCircle size={18} /> : <Filter size={18} />}
-              <span>{showCompleted ? 'Showing All' : 'Active Only'}</span>
+              {showAll ? <CheckCircle size={18} /> : <Filter size={18} />}
+              <span>{showAll ? 'Showing All' : 'Active Only'}</span>
             </button>
             <button 
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all font-medium"

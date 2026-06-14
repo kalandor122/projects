@@ -5,7 +5,7 @@ import projectRoutes from './routes/projects';
 import taskRoutes from './routes/tasks';
 import tagRoutes from './routes/tags';
 import worklogRoutes from './routes/worklogs';
-import { connectMQTT } from './services/mqtt';
+import { connectMQTT, waitForConnection, syncAllToHA } from './services/mqtt';
 import pool from './db';
 import fs from 'fs';
 import path from 'path';
@@ -15,7 +15,20 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-app.use(cors());
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:8084', 'http://localhost:5173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Routes
@@ -78,22 +91,44 @@ const initDB = async () => {
     console.log('Database initialized and migrations applied');
   } catch (err) {
     console.error('Error initializing database:', err);
+    throw err;
   }
 };
 
 // Start Server
 const start = async () => {
   await initDB();
-  connectMQTT();
   
-  // Wait a bit for MQTT to connect then sync
-  setTimeout(() => {
-    import('./services/mqtt').then(mqtt => mqtt.syncAllToHA(pool));
-  }, 2000);
+  const mqttClient = connectMQTT();
+  await waitForConnection(mqttClient);
   
-  app.listen(PORT, "0.0.0.0", () => {
+  syncAllToHA(pool);
+  
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+
+  // Graceful shutdown
+  const shutdown = async (signal: string) => {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      try {
+        await pool.end();
+        console.log('Database pool closed.');
+      } catch (err) {
+        console.error('Error closing database pool:', err);
+      }
+      process.exit(0);
+    });
+    // Force exit after 10s
+    setTimeout(() => process.exit(1), 10000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
-start();
+start().catch((err) => {
+  console.error('Fatal: Failed to start server:', err);
+  process.exit(1);
+});

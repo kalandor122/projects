@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Calendar as CalendarIcon, Clock, Filter, Tag as TagIcon, X, MoreVertical, Edit2, Trash2, CheckCircle, List, Layout as KanbanIcon, AlertCircle, FileText, Download, BookOpen, ChevronRight } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setHours, setMinutes, parse } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setHours, setMinutes } from 'date-fns';
 import IconPicker from '../components/IconPicker';
 import {
   DndContext,
@@ -88,6 +88,11 @@ function DateTimePicker({ value, onChange }: { value: Date, onChange: (date: Dat
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Sync viewDate when value prop changes externally
+  useEffect(() => {
+    setViewDate(new Date(value));
+  }, [value]);
 
   const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
   const monthStart = startOfMonth(viewDate);
@@ -501,6 +506,10 @@ export default function ProjectDetail() {
         fetch('/api/tags'),
         fetch(`/api/worklogs/project/${id}`)
       ]);
+      if (!projRes.ok) throw new Error('Failed to fetch project');
+      if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
+      if (!tagsRes.ok) throw new Error('Failed to fetch tags');
+      if (!worklogRes.ok) throw new Error('Failed to fetch worklogs');
       setProject(await projRes.json());
       setTasks(await tasksRes.json());
       setAvailableTags(await tagsRes.json());
@@ -564,19 +573,23 @@ export default function ProjectDetail() {
         if (isEditing) {
           const currentTask = tasks.find(t => t.id === editingTaskId);
           if (currentTask) {
-            for (const tag of currentTask.tags) {
-              await fetch(`/api/tasks/${editingTaskId}/tags/${tag.id}`, { method: 'DELETE' });
-            }
+            await Promise.all(
+              currentTask.tags.map(tag =>
+                fetch(`/api/tasks/${editingTaskId}/tags/${tag.id}`, { method: 'DELETE' })
+              )
+            );
           }
         }
 
-        for (const tagId of taskForm.tagIds) {
-          await fetch(`/api/tasks/${savedTask.id}/tags`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tag_id: tagId })
-          });
-        }
+        await Promise.all(
+          taskForm.tagIds.map(tagId =>
+            fetch(`/api/tasks/${savedTask.id}/tags`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tag_id: tagId })
+            })
+          )
+        );
 
         setShowTaskModal(false);
         fetchData();

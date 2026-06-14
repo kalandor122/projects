@@ -53,7 +53,7 @@ function App() {
 
           <div className="md:flex items-center gap-3 p-6 border-b border-gray-800">
             <Layout size={28} className="text-blue-500" />
-            <a onClick={() => setIsSidebarOpen(false)} className="font-bold text-xl text-white">Task Manager</a>
+            <button onClick={() => setIsSidebarOpen(false)} className="font-bold text-xl text-white bg-transparent border-none cursor-pointer p-0">Task Manager</button>
           </div>
           
           <nav className="flex-1 p-4 space-y-2 mt-4">

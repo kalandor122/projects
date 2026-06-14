@@ -3,6 +3,17 @@ import pool from '../db';
 
 const router = express.Router();
 
+// Sanitize PostgreSQL error messages
+function sanitizeError(err: unknown): string {
+  const message = err instanceof Error ? err.message : 'Unknown error';
+  return message
+    .replace(/password:.*@/g, 'password:***@')
+    .replace(/FATAL:\s*/gi, '')
+    .replace(/ERROR:\s*/gi, '')
+    .replace(/\n/g, ' ')
+    .substring(0, 200);
+}
+
 // Get worklogs for a project
 router.get('/project/:projectId', async (req, res) => {
   try {
@@ -13,7 +24,7 @@ router.get('/project/:projectId', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -21,13 +32,24 @@ router.get('/project/:projectId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { project_id, date, title, description } = req.body;
+
+    if (!project_id || typeof project_id !== 'string') {
+      return res.status(400).json({ error: 'project_id is required' });
+    }
+    if (!date || typeof date !== 'string') {
+      return res.status(400).json({ error: 'date is required' });
+    }
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return res.status(400).json({ error: 'title is required' });
+    }
+
     const result = await pool.query(
       'INSERT INTO worklogs (project_id, date, title, description) VALUES ($1, $2, $3, $4) RETURNING *',
-      [project_id, date, title, description]
+      [project_id, date, title.trim(), description || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -36,14 +58,29 @@ router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { date, title, description } = req.body;
+
+    // Build dynamic SET clause to allow setting fields to NULL
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
+
+    if (date !== undefined) { fields.push(`date = $${paramIndex++}`); values.push(date); }
+    if (title !== undefined) { fields.push(`title = $${paramIndex++}`); values.push(title); }
+    if (description !== undefined) { fields.push(`description = $${paramIndex++}`); values.push(description); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
     const result = await pool.query(
-      'UPDATE worklogs SET date = COALESCE($1, date), title = COALESCE($2, title), description = COALESCE($3, description) WHERE id = $4 RETURNING *',
-      [date, title, description, id]
+      `UPDATE worklogs SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Worklog entry not found' });
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -55,7 +92,7 @@ router.delete('/:id', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Worklog entry not found' });
     res.json({ message: 'Worklog entry deleted' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 

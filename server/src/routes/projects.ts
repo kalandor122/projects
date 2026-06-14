@@ -4,6 +4,18 @@ import { announceEntity, updateEntityState, deleteEntity } from '../services/mqt
 
 const router = express.Router();
 
+// Sanitize PostgreSQL error messages before sending to client
+function sanitizeError(err: unknown): string {
+  const message = err instanceof Error ? err.message : 'Unknown error';
+  // Remove connection details, SQL syntax hints, and stack traces
+  return message
+    .replace(/password:.*@/g, 'password:***@')
+    .replace(/FATAL:\s*/gi, '')
+    .replace(/ERROR:\s*/gi, '')
+    .replace(/\n/g, ' ')
+    .substring(0, 200);
+}
+
 // Get all projects
 router.get('/', async (req, res) => {
   try {
@@ -17,7 +29,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -37,7 +49,7 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Project not found' });
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -45,9 +57,14 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, description, deadline, icon } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+
     const result = await pool.query(
       'INSERT INTO projects (name, description, deadline, icon) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, description, deadline, icon || 'folder']
+      [name.trim(), description || null, deadline || null, icon || 'folder']
     );
     const project = result.rows[0];
     
@@ -56,7 +73,7 @@ router.post('/', async (req, res) => {
     
     res.status(201).json(project);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -65,20 +82,36 @@ router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, deadline, status, icon } = req.body;
-    
+
+    // Build dynamic SET clause to allow setting fields to NULL
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) { fields.push(`name = $${paramIndex++}`); values.push(name); }
+    if (description !== undefined) { fields.push(`description = $${paramIndex++}`); values.push(description); }
+    if (deadline !== undefined) { fields.push(`deadline = $${paramIndex++}`); values.push(deadline); }
+    if (status !== undefined) { fields.push(`status = $${paramIndex++}`); values.push(status); }
+    if (icon !== undefined) { fields.push(`icon = $${paramIndex++}`); values.push(icon); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
     const result = await pool.query(
-      'UPDATE projects SET name = COALESCE($1, name), description = COALESCE($2, description), deadline = COALESCE($3, deadline), status = COALESCE($4, status), icon = COALESCE($5, icon) WHERE id = $6 RETURNING *',
-      [name, description, deadline, status, icon, id]
+      `UPDATE projects SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
     );
     
     if (result.rows.length === 0) return res.status(404).json({ error: 'Project not found' });
     const project = result.rows[0];
     
-    updateEntityState('project', project.id, project.name, project.status, { deadline });
+    updateEntityState('project', project.id, project.name, project.status, { deadline: project.deadline });
     
     res.json(project);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -93,7 +126,7 @@ router.delete('/:id', async (req, res) => {
     deleteEntity('project', id);
     res.json({ message: 'Project deleted' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -102,10 +135,15 @@ router.post('/:id/tags', async (req, res) => {
   try {
     const { id } = req.params;
     const { tag_id } = req.body;
+
+    if (!tag_id || typeof tag_id !== 'string') {
+      return res.status(400).json({ error: 'tag_id is required' });
+    }
+
     await pool.query('INSERT INTO project_tags (project_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, tag_id]);
     res.json({ message: 'Tag assigned' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 
@@ -116,7 +154,7 @@ router.delete('/:id/tags/:tagId', async (req, res) => {
     await pool.query('DELETE FROM project_tags WHERE project_id = $1 AND tag_id = $2', [id, tagId]);
     res.json({ message: 'Tag unassigned' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: sanitizeError(err) });
   }
 });
 

@@ -12,7 +12,6 @@ MCP (Model Context Protocol) server for the Task Project Manager API. Allows AI 
 ```bash
 cd mcp
 pip install -e .
-```
 
 # Or if using uv
 uv pip install -e .
