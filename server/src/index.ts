@@ -99,10 +99,15 @@ const initDB = async () => {
 const start = async () => {
   await initDB();
   
-  const mqttClient = connectMQTT();
-  await waitForConnection(mqttClient);
-  
-  syncAllToHA(pool);
+  let mqttConnected = false;
+  try {
+    const mqttClient = connectMQTT();
+    await waitForConnection(mqttClient);
+    mqttConnected = true;
+    await syncAllToHA(pool);
+  } catch (err) {
+    console.warn('MQTT not available - server will run without MQTT features:', (err as Error).message);
+  }
   
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
