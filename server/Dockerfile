@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy source code and other required files
+# Copy source code and config files
 COPY tsconfig.json ./
 COPY src ./src
 COPY db ./db
@@ -24,12 +24,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Copy built assets and necessary files
+# Copy built assets and database schema
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/db ./db
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3090
 
-# Command to run the application
-CMD ["npm", "start"]
+# Start the server
+CMD ["node", "dist/index.js"]

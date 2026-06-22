@@ -5,7 +5,13 @@ import projectRoutes from './routes/projects';
 import taskRoutes from './routes/tasks';
 import tagRoutes from './routes/tags';
 import worklogRoutes from './routes/worklogs';
+import dailyTasksRoutes from './routes/daily/tasks';
+import dailyCategoriesRoutes from './routes/daily/categories';
+import dailyAnalyticsRoutes from './routes/daily/analytics';
+import dailyAiRoutes from './routes/daily/ai';
+import dailySettingsRoutes from './routes/daily/settings';
 import { connectMQTT, waitForConnection, syncAllToHA } from './services/mqtt';
+import { startRolloverJob } from './jobs/rollover';
 import pool from './db';
 import fs from 'fs';
 import path from 'path';
@@ -35,6 +41,13 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/worklogs', worklogRoutes);
+
+// Daily Todo routes
+app.use('/api/daily/tasks', dailyTasksRoutes);
+app.use('/api/daily/categories', dailyCategoriesRoutes);
+app.use('/api/daily/analytics', dailyAnalyticsRoutes);
+app.use('/api/daily/ai', dailyAiRoutes);
+app.use('/api/daily/settings', dailySettingsRoutes);
 
 // Database initialization
 const initDB = async () => {
@@ -106,6 +119,13 @@ const start = async () => {
     await syncAllToHA(pool);
   } catch (err) {
     console.warn('MQTT not available - server will run without MQTT features:', (err as Error).message);
+  }
+
+  // Start daily rollover cron job
+  try {
+    startRolloverJob();
+  } catch (err) {
+    console.warn('Rollover job failed to start:', (err as Error).message);
   }
   
   const server = app.listen(PORT, "0.0.0.0", () => {

@@ -1,26 +1,28 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: task_project_db
+    container_name: lifeos_db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-lifeos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifeos}
+      POSTGRES_DB: ${POSTGRES_DB:-lifeos}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lifeos} -d ${POSTGRES_DB:-lifeos}"]
+      interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   mqtt:
     build:
       context: .
       dockerfile: mqtt.Dockerfile
-    container_name: task_project_mqtt
+    container_name: lifeos_mqtt
     ports:
       - "1883:1883"
       - "9001:9001"
@@ -38,35 +40,36 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: task_project_server
+    container_name: lifeos_server
     depends_on:
       db:
         condition: service_healthy
       mqtt:
         condition: service_healthy
     environment:
-      PORT: "3001"
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-task_project}
+      PORT: "3090"
+      POSTGRES_USER: ${POSTGRES_USER:-lifeos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifeos}
+      POSTGRES_DB: ${POSTGRES_DB:-lifeos}
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       MQTT_URL: "mqtt://mqtt:1883"
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     ports:
-      - "3001:3001"
-    restart: always
+      - "3090:3090"
+    restart: unless-stopped
 
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
-    container_name: task_project_client
+    container_name: lifeos_client
     depends_on:
       - server
     ports:
       - "8084:80"
-    restart: always
+    restart: unless-stopped
 
 volumes:
   postgres_data:

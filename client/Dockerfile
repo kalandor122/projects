@@ -9,16 +9,17 @@ COPY package*.json ./
 # Clean install to ensure correct native bindings for Linux
 RUN npm install
 
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve
+# Stage 2: Serve with nginx
 FROM nginx:alpine
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config
+# Copy custom nginx config with API proxy
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
