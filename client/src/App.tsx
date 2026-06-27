@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Layout, FolderOpen, Tag, Menu, X, Clock, CheckSquare } from 'lucide-react';
+import { Layout, FolderOpen, Tag, Menu, X, Clock, CheckSquare, Inbox as InboxIcon } from 'lucide-react';
 import { useState } from 'react';
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -10,6 +10,7 @@ import DailyTasks from './pages/daily/DailyTasks';
 import DailyTaskDetail from './pages/daily/DailyTaskDetail';
 import DailyAnalytics from './pages/daily/DailyAnalytics';
 import DailySettings from './pages/daily/DailySettings';
+import Inbox from './pages/daily/Inbox';
 
 function NavItem({ to, icon: Icon, label, exact, onClick }: { to: string, icon: any, label: string, exact?: boolean, onClick?: () => void }) {
   const location = useLocation();
@@ -70,6 +71,7 @@ function App() {
             <NavItem to="/tags" icon={Tag} label="Tags" onClick={() => setIsSidebarOpen(false)} />
 
             <div className="px-4 py-1 mt-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Daily Todo</div>
+            <NavItem to="/daily/inbox" icon={InboxIcon} label="Inbox" onClick={() => setIsSidebarOpen(false)} />
             <NavItem to="/daily" icon={CheckSquare} label="Today" exact onClick={() => setIsSidebarOpen(false)} />
             <NavItem to="/daily/tasks" icon={CheckSquare} label="All Tasks" onClick={() => setIsSidebarOpen(false)} />
             <NavItem to="/daily/analytics" icon={CheckSquare} label="Analytics" onClick={() => setIsSidebarOpen(false)} />
@@ -101,6 +103,7 @@ function App() {
               <Route path="/tags" element={<TagManager />} />
 
               {/* Daily Todo routes */}
+              <Route path="/daily/inbox" element={<Inbox />} />
               <Route path="/daily" element={<DailyDashboard />} />
               <Route path="/daily/tasks" element={<DailyTasks />} />
               <Route path="/daily/tasks/:id" element={<DailyTaskDetail />} />

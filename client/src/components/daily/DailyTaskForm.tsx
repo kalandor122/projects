@@ -17,6 +17,7 @@ interface Props {
   initial?: { name: string; description?: string; priority: number; due_date?: string };
   tags?: Tag[];
   buttonLabel?: string;
+  hideDate?: boolean;
 }
 
 function todayStr(): string {
@@ -24,11 +25,11 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function DailyTaskForm({ onSubmit, initial, tags, buttonLabel = 'Add Task' }: Props) {
+export default function DailyTaskForm({ onSubmit, initial, tags, buttonLabel = 'Add Task', hideDate = false }: Props) {
   const [name, setName] = useState(initial?.name || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [priority, setPriority] = useState(initial?.priority || 3);
-  const [dueDate, setDueDate] = useState(initial?.due_date || todayStr());
+  const [dueDate, setDueDate] = useState(initial?.due_date || (hideDate ? '' : todayStr()));
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function DailyTaskForm({ onSubmit, initial, tags, buttonLabel = '
       setName(initial.name);
       setDescription(initial.description || '');
       setPriority(initial.priority);
-      setDueDate(initial.due_date || todayStr());
+      setDueDate(initial.due_date || (hideDate ? '' : todayStr()));
     }
   }, [initial]);
 
@@ -54,7 +55,7 @@ export default function DailyTaskForm({ onSubmit, initial, tags, buttonLabel = '
       setName('');
       setDescription('');
       setPriority(3);
-      setDueDate(todayStr());
+        setDueDate(hideDate ? '' : todayStr());
       setSelectedTags([]);
     }
   };
@@ -83,12 +84,14 @@ export default function DailyTaskForm({ onSubmit, initial, tags, buttonLabel = '
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
       />
       <div className="flex items-center gap-3 flex-wrap">
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-        />
+        {!hideDate && (
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+          />
+        )}
         <select
           value={priority}
           onChange={(e) => setPriority(Number(e.target.value))}

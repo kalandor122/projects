@@ -17,7 +17,7 @@ function sanitizeError(err: unknown): string {
 // GET /api/daily/tasks — list daily todos with filters
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { status, category_id, priority, due_date, search } = req.query;
+    const { status, category_id, priority, due_date, search, unscheduled } = req.query;
     const conditions: string[] = ['t.project_id IS NULL'];
     const params: any[] = [];
     let paramIdx = 0;
@@ -41,6 +41,9 @@ router.get('/', async (req: Request, res: Response) => {
       paramIdx++;
       params.push(due_date);
       conditions.push(`t.due_date = $${paramIdx}`);
+    }
+    if (unscheduled === 'true') {
+      conditions.push(`t.due_date IS NULL`);
     }
     if (search) {
       paramIdx++;

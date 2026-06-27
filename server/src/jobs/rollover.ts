@@ -18,11 +18,12 @@ export function startRolloverJob() {
       // Snapshot before rollover
       await recordDailyLog().catch(e => console.error('[Rollover] pre-snapshot error:', e));
 
-      // Get all pending daily todos (only parent tasks, not subtasks)
+      // Get all pending daily todos with a due date (skip unscheduled inbox tasks)
       const tasksToRoll = await pool.query(
         `SELECT * FROM tasks
          WHERE project_id IS NULL
-           AND status = 'pending'`
+           AND status = 'pending'
+           AND due_date IS NOT NULL`
       );
 
       let rolledCount = 0;

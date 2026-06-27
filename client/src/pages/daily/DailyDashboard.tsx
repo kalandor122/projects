@@ -69,7 +69,7 @@ export default function DailyDashboard() {
   }, []);
 
   const todayTasks = tasks.filter(
-    (t) => isToday(t.due_date) || t.due_date === null
+    (t) => isToday(t.due_date)
   );
 
   const handleToggle = useCallback(async (id: string) => {

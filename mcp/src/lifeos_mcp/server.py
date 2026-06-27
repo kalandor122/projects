@@ -641,6 +641,7 @@ async def list_daily_tasks(
     category_id: str | None = None,
     search: str | None = None,
     due_date: str | None = None,
+    unscheduled: bool | None = None,
 ) -> str:
     """List daily todo tasks, with optional filters.
 
@@ -650,6 +651,7 @@ async def list_daily_tasks(
         category_id: Filter by category UUID.
         search: Free-text search over task name.
         due_date: Filter by due date (ISO date, e.g. "2026-06-21").
+        unscheduled: Set true to get only tasks without a due date (inbox).
 
     Returns:
         JSON array of task objects, or an error string.
@@ -660,6 +662,7 @@ async def list_daily_tasks(
         "category_id": category_id,
         "search": search,
         "due_date": due_date,
+        "unscheduled": "true" if unscheduled else None,
     }
     body, status_code = await _request("GET", "daily/tasks", params=params)
     return _format_response(body, status_code)
@@ -767,6 +770,31 @@ async def delete_daily_task(id: str) -> str:
     body, status_code = await _request("DELETE", f"daily/tasks/{id}")
     if 200 <= status_code < 300:
         return f"Daily task {id} deleted."
+    return _format_response(body, status_code)
+
+
+@mcp.tool()
+async def schedule_unscheduled_tasks(
+    days: int = 7,
+) -> str:
+    """Schedule all unscheduled inbox tasks across the upcoming N days.
+
+    Distributes tasks that have no due_date across the specified number of days
+    (default 7), with higher-priority tasks getting closer dates:
+        Priority 1 (Urgent) -> days 0-1
+        Priority 2 (High)   -> days 1-3
+        Priority 3 (Medium) -> days 3-5
+        Priority 4 (Low)    -> days 5-N
+
+    Args:
+        days: Number of days to distribute over (1-90, default 7).
+
+    Returns:
+        JSON object {scheduled: N, results: [{id, name, due_date}, ...]}.
+    """
+    body, status_code = await _request(
+        "POST", "daily/schedule", json_body={"days": days}
+    )
     return _format_response(body, status_code)
 
 

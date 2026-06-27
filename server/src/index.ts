@@ -10,6 +10,7 @@ import dailyCategoriesRoutes from './routes/daily/categories';
 import dailyAnalyticsRoutes from './routes/daily/analytics';
 import dailyAiRoutes from './routes/daily/ai';
 import dailySettingsRoutes from './routes/daily/settings';
+import dailyScheduleRoutes from './routes/daily/schedule';
 import { connectMQTT, waitForConnection, syncAllToHA } from './services/mqtt';
 import { startRolloverJob } from './jobs/rollover';
 import pool from './db';
@@ -48,46 +49,36 @@ app.use('/api/daily/categories', dailyCategoriesRoutes);
 app.use('/api/daily/analytics', dailyAnalyticsRoutes);
 app.use('/api/daily/ai', dailyAiRoutes);
 app.use('/api/daily/settings', dailySettingsRoutes);
+app.use('/api/daily/schedule', dailyScheduleRoutes);
 
 // Database initialization
 const initDB = async () => {
   try {
+    // Pre-schema migrations — columns that must exist before schema applies indexes/constraints
+    const preSchemaMigrations = [
+      { table: 'tasks', column: 'due_date', type: 'DATE' },
+      { table: 'tasks', column: 'category_id', type: 'UUID' },
+      { table: 'tasks', column: 'is_ai_generated', type: 'BOOLEAN NOT NULL DEFAULT FALSE' },
+      { table: 'tasks', column: 'ease_level', type: 'VARCHAR(50) NOT NULL DEFAULT \'Medium\'' },
+      { table: 'tasks', column: 'priority', type: 'INTEGER NOT NULL DEFAULT 3' },
+      { table: 'tasks', column: 'completed_at', type: 'TIMESTAMPTZ' },
+      { table: 'tasks', column: 'updated_at', type: 'TIMESTAMPTZ NOT NULL DEFAULT NOW()' },
+      { table: 'projects', column: 'icon', type: 'VARCHAR(50) DEFAULT \'folder\'' },
+    ];
+
+    for (const { table, column, type } of preSchemaMigrations) {
+      await pool.query(
+        `DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='${table}' AND column_name='${column}') THEN
+            ALTER TABLE ${table} ADD COLUMN ${column} ${type};
+          END IF;
+        END $$;`
+      );
+    }
+
     const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
     await pool.query(schema);
     
-    // Migration: Add priority column if it doesn't exist
-    await pool.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='priority') THEN
-          ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 3;
-        END IF;
-      END
-      $$;
-    `);
-
-    // Migration: Add ease_level column if it doesn't exist
-    await pool.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='ease_level') THEN
-          ALTER TABLE tasks ADD COLUMN ease_level VARCHAR(50) NOT NULL DEFAULT 'Medium';
-        END IF;
-      END
-      $$;
-    `);
-
-    // Migration: Add icon column to projects if it doesn't exist
-    await pool.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='icon') THEN
-          ALTER TABLE projects ADD COLUMN icon VARCHAR(50) DEFAULT 'folder';
-        END IF;
-      END
-      $$;
-    `);
-
     // Migration: Create worklogs table if it doesn't exist (handled by schema.sql but double check for existing instances)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS worklogs (

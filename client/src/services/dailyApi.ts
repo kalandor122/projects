@@ -65,6 +65,11 @@ export const dailyApi = {
       request<DailyTask>(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<{ deleted: boolean }>(`/tasks/${id}`, { method: 'DELETE' }),
+    schedule: (days = 7) =>
+      request<{ scheduled: number; results: { id: string; name: string; due_date: string }[] }>(
+        '/schedule',
+        { method: 'POST', body: JSON.stringify({ days }) }
+      ),
     breakDown: (id: string) =>
       request<{ task_id: string; subtasks: DailyTask['subtasks'] }>(`/ai/${id}/break-down`, { method: 'POST' }),
   },
